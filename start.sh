@@ -200,6 +200,52 @@ else
     echo "Using existing ComfyUI installation"
 fi
 
+# ====================== YOUR CUSTOM DaSiWa SETUP ======================
+echo "=== Starting slim DaSiWa Lightspeed BoundBite setup (ephemeral) ==="
+
+cd "$COMFYUI_DIR"
+
+# Create model folders
+mkdir -p models/diffusion_models models/vae models/text_encoders models/loras user/default/workflows
+
+# === DaSiWa BoundBite High + Low v10 FP8 (your exact model) ===
+echo "Downloading DaSiWa BoundBite High v10 FP8..."
+wget -q --show-progress -O models/diffusion_models/dasiwaWAN2212V14BLightspeed_boundbiteHighV10_FP8.safetensors \
+  "https://civitai.com/api/download/models/2761725?type=Model&format=SafeTensor&size=pruned&fp=fp8" || true
+
+echo "Downloading DaSiWa BoundBite Low v10 FP8..."
+wget -q --show-progress -O models/diffusion_models/dasiwaWAN2212V14BLightspeed_boundbiteLowV10_FP8.safetensors \
+  "https://civitai.com/api/download/models/2761725?type=Model&format=SafeTensor&size=pruned&fp=fp8" || true
+
+# Required WAN files
+echo "Downloading VAE + Text Encoder..."
+wget -q -O models/vae/wan_2.1_vae.safetensors \
+  "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI/resolve/main/vae/wan_2.1_vae.safetensors" || true
+
+wget -q -O models/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors \
+  "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI/resolve/main/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors" || true
+
+# === Add your favorite hentai LoRAs here (example) ===
+cd models/loras
+mkdir -p models/loras  # safety
+
+wget -q --show-progress -O deepthroat_blowjob_dasiwa_high_v1.1.safetensors \
+  "https://civitai.com/api/download/models/2441?type=Model&format=SafeTensor" || true
+#wget -q "https://civitai.com/api/download/models/XXXXXX" -O tentacle_ravage.safetensors || true
+# Add more lines for ahegao, breast_physics, character LoRAs etc.
+
+cd "$COMFYUI_DIR"
+
+# === Your custom workflow ===
+echo "Downloading your DaSiWa workflow..."
+
+mkdir -p user/default/workflows
+wget -q --show-progress -O user/default/workflows/DaSiWa_FastFidelity_C-AiO-78.json \
+  "https://raw.githubusercontent.com/darksidewalker/dasiwa-comfyui-workflows/main/C-AiO/DaSiWa%20WAN%202.2%20i2v%20FastFidelity%20C-AiO-78.json" || true
+  
+echo "=== DaSiWa Setup Complete ==="
+# ============================================================================
+
 # Warm up pip so ComfyUI-Manager's 5s timeout check doesn't fail on cold start
 python -m pip --version > /dev/null 2>&1
 
