@@ -46,6 +46,15 @@ echo "Downloading DaSiWa FastFidelity C-AiO-78 Workflow..."
 wget -q --show-progress -O user/default/workflows/DaSiWa_FastFidelity_C-AiO-78.json \
   "https://raw.githubusercontent.com/darksidewalker/dasiwa-comfyui-workflows/main/C-AiO/DaSiWa%20WAN%202.2%20i2v%20FastFidelity%20C-AiO-78.json" || true
 
-echo "=== Everything ready! Launching ComfyUI... ==="
+echo "=== Everything ready! Launching services... ==="
 
+# Start FileBrowser (no auth for speed)
+nohup filebrowser --noauth --port 8080 --root /workspace > /dev/null 2>&1 &
+
+# Start JupyterLab (no password)
+nohup jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root \
+  --NotebookApp.token='' --NotebookApp.password='' > /dev/null 2>&1 &
+
+# Start ComfyUI in foreground (this must stay last)
+echo "Launching ComfyUI on port 8188..."
 python main.py --listen 0.0.0.0 --port 8188 --force-fp16
