@@ -54,15 +54,17 @@ WORKDIR /tmp/build
 RUN curl -fSL "https://github.com/comfyanonymous/ComfyUI/archive/refs/tags/v0.21.0.tar.gz" -o comfyui.tar.gz && \
     mkdir -p ComfyUI && tar xzf comfyui.tar.gz --strip-components=1 -C ComfyUI && rm comfyui.tar.gz
 
+# ====================== INSTALL CUSTOM NODES (SIMPLIFIED) ======================
 WORKDIR /tmp/build/ComfyUI/custom_nodes
-RUN curl -fSL "https://github.com/ltdrdata/ComfyUI-Manager/archive/${MANAGER_SHA}.tar.gz" -o manager.tar.gz && \
-    mkdir -p ComfyUI-Manager && tar xzf manager.tar.gz --strip-components=1 -C ComfyUI-Manager && rm manager.tar.gz && \
-    curl -fSL "https://github.com/kijai/ComfyUI-KJNodes/archive/${KJNODES_SHA}.tar.gz" -o kjnodes.tar.gz && \
-    mkdir -p ComfyUI-KJNodes && tar xzf kjnodes.tar.gz --strip-components=1 -C ComfyUI-KJNodes && rm kjnodes.tar.gz && \
-    curl -fSL "https://github.com/MoonGoblinDev/Civicomfy/archive/${CIVICOMFY_SHA}.tar.gz" -o civicomfy.tar.gz && \
-    mkdir -p Civicomfy && tar xzf civicomfy.tar.gz --strip-components=1 -C Civicomfy && rm civicomfy.tar.gz && \
-    curl -fSL "https://github.com/MadiatorLabs/ComfyUI-RunpodDirect/archive/${RUNPODDIRECT_SHA}.tar.gz" -o runpoddirect.tar.gz && \
-    mkdir -p ComfyUI-RunpodDirect && tar xzf runpoddirect.tar.gz --strip-components=1 -C ComfyUI-RunpodDirect && rm runpoddirect.tar.gz
+RUN git clone https://github.com/Comfy-Org/ComfyUI-Manager.git /ComfyUI/custom_nodes/ComfyUI-Manager && \
+    git clone https://github.com/kijai/ComfyUI-KJNodes.git /ComfyUI/custom_nodes/ComfyUI-KJNodes && \
+    git clone https://github.com/MoonGoblinDev/Civicomfy.git /ComfyUI/custom_nodes/Civicomfy && \
+    git clone https://github.com/MadiatorLabs/ComfyUI-RunpodDirect.git /ComfyUI/custom_nodes/ComfyUI-RunpodDirect && \
+    cd /ComfyUI/custom_nodes/ComfyUI-Manager && git checkout main && \
+    cd /ComfyUI/custom_nodes/ComfyUI-KJNodes && git checkout main && \
+    cd /ComfyUI/custom_nodes/Civicomfy && git checkout main && \
+    cd /ComfyUI/custom_nodes/ComfyUI-RunpodDirect && git checkout main
+# =============================================================================
 
 # Init git repos with upstream remotes so ComfyUI-Manager can detect versions
 # and users can update via Manager at their own risk
