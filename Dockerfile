@@ -1,228 +1,34 @@
-# ============================================================================
-# Stage 1: Builder - Download pinned sources and install all Python packages
-# ============================================================================
-FROM ubuntu:24.04 AS builder
+FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV COMFYUI_DIR=/workspace/ComfyUI
 
-# ---- Version pins (set in docker-bake.hcl) ----
-ARG COMFYUI_VERSION
-ARG MANAGER_SHA
-ARG KJNODES_SHA
-ARG CIVICOMFY_SHA
-ARG RUNPODDIRECT_SHA
-ARG TORCH_VERSION
-ARG TORCHVISION_VERSION
-ARG TORCHAUDIO_VERSION
+RUN apt-get update && apt-get install -y \
+    git python3 python3-pip python3-venv curl wget \
+    && rm -rf /var/lib/apt/lists/*
 
-# ---- CUDA variant (set in docker-bake.hcl per target) ----
-ARG CUDA_VERSION_DASH=12-8
-ARG TORCH_INDEX_SUFFIX=cu128
+# ====================== SIMPLIFIED COMFYUI + NODES ======================
+RUN git clone https://github.com/comfyanonymous/ComfyUI.git ${COMFYUI_DIR} && \
+    cd ${COMFYUI_DIR} && \
+    python3 -m venv venv && \
+    . venv/bin/activate && \
+    pip install --upgrade pip && \
+    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124 && \
+    pip install -r requirements.txt && \
+    \
+    # Custom Nodes
+    git clone https://github.com/ltdrdata/ComfyUI-Manager.git ${COMFYUI_DIR}/custom_nodes/ComfyUI-Manager && \
+    git clone https://github.com/kijai/ComfyUI-KJNodes.git ${COMFYUI_DIR}/custom_nodes/ComfyUI-KJNodes && \
+    git clone https://github.com/MoonGoblinDev/Civicomfy.git ${COMFYUI_DIR}/custom_nodes/Civicomfy && \
+    git clone https://github.com/MadiatorLabs/ComfyUI-RunpodDirect.git ${COMFYUI_DIR}/custom_nodes/ComfyUI-RunpodDirect
 
-# Install minimal dependencies needed for building
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    wget \
-    curl \
-    git \
-    ca-certificates \
-    python3.12 \
-    python3.12-venv \
-    python3.12-dev \
-    build-essential \
-    && wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb \
-    && dpkg -i cuda-keyring_1.1-1_all.deb \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends cuda-minimal-build-${CUDA_VERSION_DASH} libcusparse-dev-${CUDA_VERSION_DASH} \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && rm cuda-keyring_1.1-1_all.deb \
-    && rm -f /usr/lib/python3.12/EXTERNALLY-MANAGED
+# Install requirements for nodes
+RUN . ${COMFYUI_DIR}/venv/bin/activate && \
+    cd ${COMFYUI_DIR}/custom_nodes/ComfyUI-Manager && pip install -r requirements.txt || true && \
+    cd ${COMFYUI_DIR}/custom_nodes/ComfyUI-KJNodes && pip install -r requirements.txt || true
 
-# Install pip and pip-tools for lock file generation
-RUN curl -sS https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
-    python3.12 get-pip.py && \
-    python3.12 -m pip install --no-cache-dir pip-tools && \
-    rm get-pip.py
-
-# Set CUDA environment for building
-ENV PATH=/usr/local/cuda/bin:${PATH}
-ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64
-
-# Download pinned source archives
-WORKDIR /tmp/build
-RUN curl -fSL "https://github.com/comfyanonymous/ComfyUI/archive/refs/tags/v0.21.0.tar.gz" -o comfyui.tar.gz && \
-    mkdir -p ComfyUI && tar xzf comfyui.tar.gz --strip-components=1 -C ComfyUI && rm comfyui.tar.gz
-
-# ====================== INSTALL CUSTOM NODES (SIMPLIFIED) ======================
-WORKDIR /tmp/build/ComfyUI/custom_nodes
-RUN git clone https://github.com/Comfy-Org/ComfyUI-Manager.git /ComfyUI/custom_nodes/ComfyUI-Manager && \
-    git clone https://github.com/kijai/ComfyUI-KJNodes.git /ComfyUI/custom_nodes/ComfyUI-KJNodes && \
-    git clone https://github.com/MoonGoblinDev/Civicomfy.git /ComfyUI/custom_nodes/Civicomfy && \
-    git clone https://github.com/MadiatorLabs/ComfyUI-RunpodDirect.git /ComfyUI/custom_nodes/ComfyUI-RunpodDirect && \
-    cd /ComfyUI/custom_nodes/ComfyUI-Manager && git checkout main && \
-    cd /ComfyUI/custom_nodes/ComfyUI-KJNodes && git checkout main && \
-    cd /ComfyUI/custom_nodes/Civicomfy && git checkout main && \
-    cd /ComfyUI/custom_nodes/ComfyUI-RunpodDirect && git checkout main
-# =============================================================================
-
-# Init git repos with upstream remotes so ComfyUI-Manager can detect versions
-# and users can update via Manager at their own risk
-RUN cd /tmp/build/ComfyUI && \
-    git init && git add -A && git -c user.name=- -c user.email=- commit -q -m "ComfyUI ${COMFYUI_VERSION}" && git tag "${COMFYUI_VERSION}" && \
-    git remote add origin https://github.com/comfyanonymous/ComfyUI.git && \
-    cd /tmp/build/ComfyUI/custom_nodes/ComfyUI-Manager && \
-    git init && git add -A && git -c user.name=- -c user.email=- commit -q -m "ComfyUI-Manager ${MANAGER_SHA}" && \
-    git remote add origin https://github.com/ltdrdata/ComfyUI-Manager.git && \
-    cd /tmp/build/ComfyUI/custom_nodes/ComfyUI-KJNodes && \
-    git init && git add -A && git -c user.name=- -c user.email=- commit -q -m "ComfyUI-KJNodes ${KJNODES_SHA}" && \
-    git remote add origin https://github.com/kijai/ComfyUI-KJNodes.git && \
-    cd /tmp/build/ComfyUI/custom_nodes/Civicomfy && \
-    git init && git add -A && git -c user.name=- -c user.email=- commit -q -m "Civicomfy ${CIVICOMFY_SHA}" && \
-    git remote add origin https://github.com/MoonGoblinDev/Civicomfy.git && \
-    cd /tmp/build/ComfyUI/custom_nodes/ComfyUI-RunpodDirect && \
-    git init && git add -A && git -c user.name=- -c user.email=- commit -q -m "ComfyUI-RunpodDirect ${RUNPODDIRECT_SHA}" && \
-    git remote add origin https://github.com/MadiatorLabs/ComfyUI-RunpodDirect.git
-
-# Generate lock file from all requirements (including torch pins), then install with hash verification
-WORKDIR /tmp/build
-RUN cat ComfyUI/requirements.txt > requirements.in && \
-    for node_dir in ComfyUI/custom_nodes/*/; do \
-        if [ -f "$node_dir/requirements.txt" ]; then \
-            cat "$node_dir/requirements.txt" >> requirements.in; \
-        fi; \
-    done && \
-    echo "GitPython" >> requirements.in && \
-    echo "opencv-python" >> requirements.in && \
-    echo "jupyter" >> requirements.in && \
-    echo "jupyter-resource-usage" >> requirements.in && \
-    echo "jupyterlab-nvdashboard" >> requirements.in && \
-    echo "torch==${TORCH_VERSION}" >> constraints.txt && \
-    echo "torchvision==${TORCHVISION_VERSION}" >> constraints.txt && \
-    echo "torchaudio==${TORCHAUDIO_VERSION}" >> constraints.txt && \
-    echo "pillow>=12.1.1" >> constraints.txt && \
-    TORCH_INDEX_URL="https://download.pytorch.org/whl/${TORCH_INDEX_SUFFIX}" && \
-    PIP_INDEX_URL=https://pypi.org/simple \
-    PIP_EXTRA_INDEX_URL="${TORCH_INDEX_URL}" \
-    PIP_CONSTRAINT=constraints.txt \
-    pip-compile --generate-hashes --output-file=requirements.lock --strip-extras --allow-unsafe requirements.in && \
-    python3.12 -m pip install --no-cache-dir --ignore-installed --require-hashes \
-    --index-url https://pypi.org/simple \
-    --extra-index-url "${TORCH_INDEX_URL}" \
-    -r requirements.lock
-
-# Pre-populate ComfyUI-Manager cache so first cold start skips the slow registry fetch
-COPY scripts/prebake-manager-cache.py /tmp/prebake-manager-cache.py
-RUN python3.12 /tmp/prebake-manager-cache.py /tmp/build/ComfyUI/user/__manager/cache
-
-# Bake ComfyUI + custom nodes into a known location for runtime copy
-RUN cp -r /tmp/build/ComfyUI /opt/comfyui-baked
-
-# ============================================================================
-# Stage 2: Runtime - Clean image with pre-installed packages
-# ============================================================================
-FROM ubuntu:24.04
-
-ENV DEBIAN_FRONTEND=noninteractive
-ENV PYTHONUNBUFFERED=1
-ENV IMAGEIO_FFMPEG_EXE=/usr/bin/ffmpeg
-ENV FILEBROWSER_CONFIG=/workspace/runpod-slim/.filebrowser.json
-
-# ---- CUDA variant (re-declared for runtime stage) ----
-ARG CUDA_VERSION_DASH=12-8
-
-# ---- FileBrowser version pin (set in docker-bake.hcl) ----
-ARG FILEBROWSER_VERSION
-ARG FILEBROWSER_SHA256
-
-# Update and install runtime dependencies, CUDA, and common tools
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends \
-    git \
-    python3.12 \
-    python3.12-venv \
-    python3.12-dev \
-    build-essential \
-    libssl-dev \
-    wget \
-    gnupg \
-    xz-utils \
-    openssh-client \
-    openssh-server \
-    nano \
-    curl \
-    htop \
-    tmux \
-    ca-certificates \
-    less \
-    net-tools \
-    iputils-ping \
-    procps \
-    openssl \
-    ffmpeg \
-    && wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb \
-    && dpkg -i cuda-keyring_1.1-1_all.deb \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends cuda-minimal-build-${CUDA_VERSION_DASH} \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && rm cuda-keyring_1.1-1_all.deb \
-    && rm -f /usr/lib/python3.12/EXTERNALLY-MANAGED
-
-# Copy Python packages, executables, and Jupyter data from builder stage
-COPY --from=builder /usr/local/lib/python3.12 /usr/local/lib/python3.12
-COPY --from=builder /usr/local/bin /usr/local/bin
-COPY --from=builder /usr/local/share/jupyter /usr/local/share/jupyter
-
-# Register Jupyter extensions (pip --ignore-installed skips post-install hooks)
-RUN mkdir -p /usr/local/etc/jupyter/jupyter_server_config.d && \
-    echo '{"ServerApp":{"jpserver_extensions":{"jupyter_server_terminals":true,"jupyterlab":true,"jupyter_resource_usage":true,"jupyterlab_nvdashboard":true}}}' \
-    > /usr/local/etc/jupyter/jupyter_server_config.d/extensions.json
-
-# Copy baked ComfyUI + custom nodes from builder stage
-COPY --from=builder /opt/comfyui-baked /opt/comfyui-baked
-
-# Remove uv to force ComfyUI-Manager to use pip (uv doesn't respect --system-site-packages properly)
-RUN pip uninstall -y uv 2>/dev/null || true && \
-    rm -f /usr/local/bin/uv /usr/local/bin/uvx
-
-# Install FileBrowser (pinned version with checksum)
-RUN curl -fSL "https://github.com/filebrowser/filebrowser/releases/download/${FILEBROWSER_VERSION}/linux-amd64-filebrowser.tar.gz" -o /tmp/fb.tar.gz && \
-    echo "${FILEBROWSER_SHA256}  /tmp/fb.tar.gz" | sha256sum -c - && \
-    tar xzf /tmp/fb.tar.gz -C /usr/local/bin filebrowser && \
-    rm /tmp/fb.tar.gz
-
-# Set CUDA environment variables
-ENV PATH=/usr/local/cuda/bin:${PATH}
-ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64
-
-# Allow container to start on hosts with older CUDA 12.x drivers
-ENV NVIDIA_REQUIRE_CUDA=""
-ENV NVIDIA_DISABLE_REQUIRE=true
-ENV NVIDIA_VISIBLE_DEVICES=all
-ENV NVIDIA_DRIVER_CAPABILITIES=all
-
-# Jupyter is included in the lock file and installed in the builder stage
-
-# Configure SSH for root login
-RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
-    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
-    mkdir -p /run/sshd && \
-    rm -f /etc/ssh/ssh_host_*
-
-# Create workspace directory
-RUN mkdir -p /workspace/runpod-slim
-WORKDIR /workspace/runpod-slim
-
-# Expose ports
-EXPOSE 8188 22 8888 8080
-
-# Copy start script
+WORKDIR ${COMFYUI_DIR}
 COPY start.sh /start.sh
+RUN chmod +x /start.sh
 
-# Set Python 3.12 as default
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
-    update-alternatives --set python3 /usr/bin/python3.12
-
-ENTRYPOINT ["/start.sh"]
+CMD ["/start.sh"]
