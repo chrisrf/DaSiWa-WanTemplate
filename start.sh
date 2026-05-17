@@ -19,13 +19,15 @@ fi
 mkdir -p models/diffusion_models models/vae models/text_encoders models/loras user/default/workflows
 
 # ====================== DOWNLOAD YOUR MODELS ======================
-echo "Downloading DaSiWa BoundBite High v10 FP8..."
-wget -q --show-progress -O models/diffusion_models/dasiwaWAN2212V14BLightspeed_boundbiteHighV10_FP8.safetensors \
-  "https://civitai.com/api/download/models/2761725?type=Model&format=SafeTensor&size=pruned&fp=fp8" || true
+echo "Downloading DaSiWa BoundBite High v10 FP8 (robust)..."
+wget --show-progress --continue --tries=5 --timeout=60 \
+  -O models/diffusion_models/dasiwaWAN2212V14BLightspeed_boundbiteHighV10_FP8.safetensors \
+  "https://civitai.com/api/download/models/2761725?type=Model&format=SafeTensor&size=pruned&fp=fp8" || true &token=runpod
 
-echo "Downloading DaSiWa BoundBite Low v10 FP8..."
-wget -q --show-progress -O models/diffusion_models/dasiwaWAN2212V14BLightspeed_boundbiteLowV10_FP8.safetensors \
-  "https://civitai.com/api/download/models/2761725?type=Model&format=SafeTensor&size=pruned&fp=fp8" || true
+echo "Downloading DaSiWa BoundBite Low v10 FP8 (robust)..."
+wget --show-progress --continue --tries=5 --timeout=60 \
+  -O models/diffusion_models/dasiwaWAN2212V14BLightspeed_boundbiteLowV10_FP8.safetensors \
+  "https://civitai.com/api/download/models/2761725?type=Model&format=SafeTensor&size=pruned&fp=fp8" || true &token=runpod
 
 echo "Downloading VAE + Text Encoder..."
 wget -q -O models/vae/wan_2.1_vae.safetensors \
