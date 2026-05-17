@@ -5,8 +5,10 @@ ENV COMFYUI_DIR=/workspace/ComfyUI
 ENV VIRTUAL_ENV=${COMFYUI_DIR}/venv
 ENV PATH="${VIRTUAL_ENV}/bin:$PATH"
 
+# Install system dependencies (including the one causing your error)
 RUN apt-get update && apt-get install -y \
     git python3 python3-pip python3-venv curl wget \
+    libgl1-mesa-glx libglib2.0-0 libsm6 libxext6 libxrender-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # ====================== COMFYUI + NODES ======================
