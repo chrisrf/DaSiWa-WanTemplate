@@ -2,12 +2,14 @@ FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV COMFYUI_DIR=/workspace/ComfyUI
+ENV VIRTUAL_ENV=${COMFYUI_DIR}/venv
+ENV PATH="${VIRTUAL_ENV}/bin:$PATH"
 
 RUN apt-get update && apt-get install -y \
     git python3 python3-pip python3-venv curl wget \
     && rm -rf /var/lib/apt/lists/*
 
-# ====================== SIMPLIFIED COMFYUI + NODES ======================
+# ====================== COMFYUI + NODES ======================
 RUN git clone https://github.com/comfyanonymous/ComfyUI.git ${COMFYUI_DIR} && \
     cd ${COMFYUI_DIR} && \
     python3 -m venv venv && \
@@ -22,8 +24,8 @@ RUN git clone https://github.com/comfyanonymous/ComfyUI.git ${COMFYUI_DIR} && \
     git clone https://github.com/MoonGoblinDev/Civicomfy.git ${COMFYUI_DIR}/custom_nodes/Civicomfy && \
     git clone https://github.com/MadiatorLabs/ComfyUI-RunpodDirect.git ${COMFYUI_DIR}/custom_nodes/ComfyUI-RunpodDirect
 
-# Install requirements for nodes
-RUN . ${COMFYUI_DIR}/venv/bin/activate && \
+# Install node requirements
+RUN . ${VIRTUAL_ENV}/bin/activate && \
     cd ${COMFYUI_DIR}/custom_nodes/ComfyUI-Manager && pip install -r requirements.txt || true && \
     cd ${COMFYUI_DIR}/custom_nodes/ComfyUI-KJNodes && pip install -r requirements.txt || true
 
