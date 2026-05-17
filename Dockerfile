@@ -51,7 +51,7 @@ ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64
 
 # Download pinned source archives
 WORKDIR /tmp/build
-RUN curl -fSL "https://github.com/comfyanonymous/ComfyUI/archive/refs/tags/${COMFYUI_VERSION}.tar.gz" -o comfyui.tar.gz && \
+RUN curl -fSL "https://github.com/comfyanonymous/ComfyUI/archive/refs/tags/v0.21.0.tar.gz" -o comfyui.tar.gz && \
     mkdir -p ComfyUI && tar xzf comfyui.tar.gz --strip-components=1 -C ComfyUI && rm comfyui.tar.gz
 
 WORKDIR /tmp/build/ComfyUI/custom_nodes
