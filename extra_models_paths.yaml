@@ -1,0 +1,5 @@
+base_path: /workspace/ComfyUI
+diffusion_models: models/diffusion_models
+loras: models/loras
+vae: models/vae
+text_encoders: models/text_encoders
