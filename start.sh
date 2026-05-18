@@ -29,18 +29,22 @@ wget --show-progress --continue --tries=5 --timeout=60 \
   -O models/diffusion_models/dasiwaWAN2212V14BLightspeed_boundbiteLowV10_FP8.safetensors \
   "https://civitai.com/api/download/models/2761725?type=Model&format=SafeTensor&size=pruned&fp=fp8" || true &token=runpod
 
-echo "Downloading VAE + Text Encoder..."
-wget -q -O models/vae/wan_2.1_vae.safetensors \
-  "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI/resolve/main/vae/wan_2.1_vae.safetensors" || true
+echo "Downloading WAN VAE (robust)..."
+wget --show-progress --continue --tries=5 --timeout=60 \
+  -O models/vae/wan_2.1_vae.safetensors \
+  "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors" || true &token=runpod
 
-wget -q -O models/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors \
-  "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI/resolve/main/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors" || true
+echo "Downloading UMT5 Text Encoder (robust)..."
+wget --show-progress --continue --tries=5 --timeout=120 \
+  -O models/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors \
+  "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI/resolve/main/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors" || true &token=runpod
 
 # ====================== DEEPTHROAT LORA ======================
 echo "Downloading Deepthroat Blowjob LoRA..."
 cd models/loras
 wget -q --show-progress -O deepthroat_blowjob_dasiwa_high_v1.1.safetensors \
-  "https://civitai.com/api/download/models/2441?type=Model&format=SafeTensor" || true
+  "https://civitai.com/api/download/models/2441?type=Model&format=SafeTensor" || true &token=runpod
+  
 cd /workspace/ComfyUI
 
 # ====================== WORKFLOW ======================
